@@ -1,2 +1,3 @@
 # ComplianceMonitor
-Standalone module that can be used to monitor Aruna components and compliance concepts.
+
+Standalone module that can be used to monitor Aruna components and other individual compliance concepts.
