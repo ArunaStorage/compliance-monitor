@@ -3,7 +3,8 @@ use core::fmt::Debug;
 
 #[async_trait::async_trait]
 pub trait Monitor {
-    async fn monitor(&mut self) -> Result<bool>;
+    // Result<(bool, u64)> is (is_ok, duration_ms)
+    async fn monitor(&mut self) -> Result<(bool, u64)>;
 }
 
 impl Debug for dyn Monitor + Send + Sync {

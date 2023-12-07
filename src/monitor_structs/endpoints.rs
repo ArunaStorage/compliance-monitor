@@ -5,10 +5,6 @@ use postgres_types::Json;
 use std::sync::Arc;
 
 use crate::{
-    database::{
-        connection::Database,
-        monitor_dsl::{MonitorResult, MonitorResultType, MonitorType, RunParameters},
-    },
     traits::Monitor,
 };
 
@@ -23,7 +19,6 @@ pub struct S3Credentials<'a> {
 }
 
 pub struct EndpointMonitor<'a> {
-    database: Arc<Database>,
     endpoint_host: &'a str,
     credentials: Credentials<'a>,
     last_monitor: NaiveDateTime,
