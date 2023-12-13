@@ -1,10 +1,4 @@
-use std::sync::Arc;
-
 use anyhow::Result;
-use monitor::MonitorRunner;
-use monitor_structs::endpoints::EndpointMonitor;
-use tokio::sync::Mutex;
-use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod monitor;
@@ -40,7 +34,7 @@ async fn main() -> Result<()> {
         .unwrap_or("none".into())
         .add_directive("compliance_monitor=trace".parse()?);
 
-    let subscriber = tracing_subscriber::fmt()
+    let _subscriber = tracing_subscriber::fmt()
         //.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         // Use a more compact, abbreviated log format
         .compact()
@@ -53,5 +47,13 @@ async fn main() -> Result<()> {
         .with_target(false)
         .finish();
 
-    todo!();
+    let mut monitor = monitor::MetricsExporter::new();
+    monitor.add_monitor(Box::new(monitor_structs::tls::TlsMonitor::new("google_tls_check".to_string(), "https://www.google.com".to_string())?));
+    monitor.add_monitor(Box::new(monitor_structs::tls::TlsMonitor::new("aruna_broken_check".to_string(), "https://blup.dev.aruna-storage.org/".to_string())?));
+
+    let _ = tokio::spawn(async move {
+        monitor.run().await.unwrap();
+    }).await?;
+
+    Ok(())
 }

@@ -4,10 +4,6 @@ use diesel_ulid::DieselUlid;
 use postgres_types::Json;
 use std::sync::Arc;
 
-use crate::{
-    traits::Monitor,
-};
-
 pub enum Credentials<'a> {
     S3(S3Credentials<'a>),
     Token(&'a str),
