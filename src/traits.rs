@@ -1,6 +1,7 @@
 use anyhow::Result;
 use core::fmt::Debug;
 
+#[allow(dead_code)]
 pub enum ResultType {
     Counter(u64),
     Gauge(f64),

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use tokio::time::Duration;
-use tracing::{info};
+use tracing::info;
 use metrics::{gauge, histogram, absolute_counter};
 
 use crate::traits::{Monitor, ResultType};

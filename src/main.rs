@@ -1,5 +1,6 @@
 use anyhow::Result;
 use tracing_subscriber::EnvFilter;
+use url::Url;
 
 mod monitor;
 mod monitor_structs;
@@ -34,7 +35,7 @@ async fn main() -> Result<()> {
         .unwrap_or("none".into())
         .add_directive("compliance_monitor=trace".parse()?);
 
-    let _subscriber = tracing_subscriber::fmt()
+    let subscriber = tracing_subscriber::fmt()
         //.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         // Use a more compact, abbreviated log format
         .compact()
@@ -47,9 +48,17 @@ async fn main() -> Result<()> {
         .with_target(false)
         .finish();
 
+    tracing::subscriber::set_global_default(subscriber)?;
+
     let mut monitor = monitor::MetricsExporter::new();
-    monitor.add_monitor(Box::new(monitor_structs::tls::TlsMonitor::new("google_tls_check".to_string(), "https://www.google.com".to_string())?));
-    monitor.add_monitor(Box::new(monitor_structs::tls::TlsMonitor::new("aruna_broken_check".to_string(), "https://blup.dev.aruna-storage.org/".to_string())?));
+
+    // TLS Monitors 
+    dotenvy::var("TLS_CHECK_ENDPOINTS").ok().map(|endpoints| {
+        endpoints.split(",").for_each(|endpoint| {
+            let name = Url::parse(endpoint).unwrap().host_str().unwrap().to_string();
+            monitor.add_monitor(Box::new(monitor_structs::tls::TlsMonitor::new(name, endpoint.to_string()).unwrap()));
+        })
+    });
 
     let _ = tokio::spawn(async move {
         monitor.run().await.unwrap();

@@ -1,6 +1,5 @@
 use crate::traits::{Monitor, ResultType};
 use anyhow::Result;
-use reqwest::tls::TlsInfo;
 
 pub struct TlsMonitor {
     name: String,
@@ -28,7 +27,7 @@ impl Monitor for TlsMonitor {
             } else {
                 ResultType::Counter(0)
             },
-            Err(e) => {
+            Err(_) => {
                 ResultType::Counter(0)
             }
         
