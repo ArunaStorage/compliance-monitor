@@ -8,12 +8,14 @@ use crate::traits::{Monitor, ResultType};
 
 pub struct MetricsExporter {
     monitors: Vec<Box<dyn Monitor + Send + Sync>>,
+    wait: u64,
 }
 
 impl MetricsExporter {
-    pub fn new() -> Self {
+    pub fn new(wait: u64) -> Self {
         MetricsExporter {
             monitors: Vec::new(),
+            wait,
         }
     }
 
@@ -59,7 +61,7 @@ impl MetricsExporter {
                 }
                 histogram!(format!("{}_duration", monitor.get_name()), duration as f64);
             }
-            tokio::time::sleep(Duration::from_secs(60)).await;
+            tokio::time::sleep(Duration::from_secs(self.wait)).await;
         }
     }
 }

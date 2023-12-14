@@ -50,7 +50,9 @@ async fn main() -> Result<()> {
 
     tracing::subscriber::set_global_default(subscriber)?;
 
-    let mut monitor = monitor::MetricsExporter::new();
+    let interval = dotenvy::var("MONITOR_INTERVAL")?.parse::<u64>()?;
+
+    let mut monitor = monitor::MetricsExporter::new(interval);
 
     // TLS Monitors 
     dotenvy::var("TLS_CHECK_ENDPOINTS").ok().map(|endpoints| {
