@@ -1,47 +1,67 @@
 use anyhow::Result;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tracing::{info, warn};
+use metrics_exporter_prometheus::PrometheusBuilder;
+use tokio::time::Duration;
+use tracing::info;
+use metrics::{gauge, histogram, absolute_counter};
 
-use crate::traits::Monitor;
+use crate::traits::{Monitor, ResultType};
 
-pub struct MonitorRunner {
-    monitors: Vec<Arc<Mutex<Box<dyn Monitor + Send + Sync>>>>,
+pub struct MetricsExporter {
+    monitors: Vec<Box<dyn Monitor + Send + Sync>>,
+    wait: u64,
 }
 
-impl MonitorRunner {
-    //ToDo: Docs
-    pub fn new() -> Self {
-        MonitorRunner {
+impl MetricsExporter {
+    pub fn new(wait: u64) -> Self {
+        MetricsExporter {
             monitors: Vec::new(),
+            wait,
         }
     }
 
-    //ToDo: Docs
-    pub fn add_component(&mut self, component: Arc<Mutex<Box<dyn Monitor + Send + Sync>>>) {
+    pub fn add_monitor(&mut self, component: Box<dyn Monitor + Send + Sync>) {
         self.monitors.push(component);
     }
 
-    //ToDo: Docs
-    pub async fn run(&self) -> Result<()> {
-        for monitor in &self.monitors {
-            // Clone monitor arc for spawn
-            let monitor_clone = monitor.clone();
+    pub async fn run(&mut self) -> Result<()> {
+        let builder = PrometheusBuilder::new();
+        builder.install()?;
 
-            // Start monitor in spawn
-            tokio::spawn(async move {
-                match monitor_clone.lock().await.monitor().await {
-                    Ok(result) => info!("Monitoring was successful: {}", result),
-                    Err(err) => warn!(
-                        "Monitoring failed for {:#?} because: {}",
-                        monitor_clone, err
-                    ),
+        loop {
+            for monitor in self.monitors.iter_mut() {
+                let (result, duration) = monitor.monitor().await?;
+                match result {
+                    ResultType::Counter(value) => {
+                        absolute_counter!(monitor.get_name().to_string(), value);
+                        info!(
+                            "metric: {}_counter, value: {}, duration: {}ms",
+                            monitor.get_name(),
+                            value,
+                            duration
+                        );
+                    }
+                    ResultType::Gauge(value) => {
+                        gauge!(monitor.get_name().to_string(), value);
+                        info!(
+                            "metric: {}_gauge, value: {}, duration: {}ms",
+                            monitor.get_name(),
+                            value,
+                            duration
+                        );
+                    }
+                    ResultType::Histogram(value) => {
+                        histogram!(monitor.get_name().to_string(), value);
+                        info!(
+                            "metric: {}_histogram, value: {}, duration: {}ms",
+                            monitor.get_name(),
+                            value,
+                            duration
+                        );
+                    }
                 }
-
-                Ok::<(), anyhow::Error>(())
-            });
+                histogram!(format!("{}_duration", monitor.get_name()), duration as f64);
+            }
+            tokio::time::sleep(Duration::from_secs(self.wait)).await;
         }
-
-        Ok(())
     }
 }

@@ -8,14 +8,14 @@ anyhow = "1.0.75"
 aruna-rust-api = "2.0.0-beta.9"
 async-trait = "0.1.74"
 chrono = "0.4.31"
-deadpool-postgres = "0.11.0"
 diesel-ulid = "0.3.1"
 dotenvy = "0.15.7"
-postgres-from-row = "=0.5.2"
-postgres-types = { version = "0.2.6", features = ["derive"] }
+metrics = "0.21.1"
+metrics-exporter-prometheus = "0.12.1"
+reqwest = {version = "0.11.22", features = ["blocking"]}
 serde = {version = "1.0.190", features = ["derive"]}
 serde_json = {version = "1.0.108", features = ["raw_value"]}
 tokio = {version = "1.34.0", features = ["full"]}
-tokio-postgres = { version = "0.7.10", features = ["with-uuid-1", "with-serde_json-1", "with-chrono-0_4"] }
 tracing = "0.1.40"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter", "time"]}
+url = "2.5.0"

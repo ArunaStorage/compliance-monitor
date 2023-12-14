@@ -1,13 +1,7 @@
-use std::sync::Arc;
-
 use anyhow::Result;
-use monitor::MonitorRunner;
-use monitor_structs::endpoints::EndpointMonitor;
-use tokio::sync::Mutex;
-use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
+use url::Url;
 
-mod database;
 mod monitor;
 mod monitor_structs;
 mod traits;
@@ -56,52 +50,21 @@ async fn main() -> Result<()> {
 
     tracing::subscriber::set_global_default(subscriber)?;
 
-    // Init database connection
-    let database = database::connection::Database::new(
-        dotenvy::var("DATABASE_HOST")?,
-        dotenvy::var("DATABASE_PORT")?.parse::<u16>()?,
-        dotenvy::var("DATABASE_NAME")?,
-        dotenvy::var("DATABASE_USER")?,
-        dotenvy::var("DATABASE_PASSWORD")?,
-    )?;
-    database.initialize_db().await?;
-    let database_arc = Arc::new(database);
+    let interval = dotenvy::var("MONITOR_INTERVAL")?.parse::<u64>()?;
 
-    // Read monitoring interval from config or use default of 1 hour
-    let monitor_interval = dotenvy::var("MONITOR_INTERVAL")
-        .unwrap_or("3600".to_string())
-        .parse::<u64>()?;
+    let mut monitor = monitor::MetricsExporter::new(interval);
 
-    //ToDo: Replace dummy monitoring structs init
-    let mut monitors = MonitorRunner::new();
+    // TLS Monitors 
+    dotenvy::var("TLS_CHECK_ENDPOINTS").ok().map(|endpoints| {
+        endpoints.split(",").for_each(|endpoint| {
+            let name = Url::parse(endpoint).unwrap().host_str().unwrap().to_string();
+            monitor.add_monitor(Box::new(monitor_structs::tls::TlsMonitor::new(name, endpoint.to_string()).unwrap()));
+        })
+    });
 
-    monitors.add_component(Arc::new(Mutex::new(Box::new(EndpointMonitor::new(
-        "https://proxy.gi.dev.aruna-storage.org",
-        database_arc.clone(),
-    )?))));
+    let _ = tokio::spawn(async move {
+        monitor.run().await.unwrap();
+    }).await?;
 
-    monitors.add_component(Arc::new(Mutex::new(Box::new(EndpointMonitor::new(
-        "https://proxy.bi.dev.aruna-storage.org",
-        database_arc.clone(),
-    )?))));
-
-    monitors.add_component(Arc::new(Mutex::new(Box::new(EndpointMonitor::new(
-        "https://proxy.be.dev.aruna-storage.org",
-        database_arc.clone(),
-    )?))));
-
-    // Loop until the end of time
-    info!("Starting monitor loop.");
-    let mut counter = 0;
-    loop {
-        counter = counter + 1;
-        info!("Monitor loop iteration: {}", counter);
-
-        if let Err(err) = monitors.run().await {
-            error!("Monitor run init failed: {}", err)
-        };
-
-        // Sleep for 1 hour.
-        std::thread::sleep(std::time::Duration::from_secs(monitor_interval))
-    }
+    Ok(())
 }
